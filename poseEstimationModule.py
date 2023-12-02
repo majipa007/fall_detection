@@ -11,10 +11,44 @@ class poseDetector:
         self.mpPose = mp.solutions.pose
         self.pose = self.mpPose.Pose()
         self.mpDraw = mp.solutions.drawing_utils
+        self.cTime = 0
+        self.pTime = 0
+        self.img = None
+
+    def __call__(self, *args, **kwargs):
+        cap = cv.VideoCapture(0)
+
+        while True:
+            success, self.img = cap.read()
+            self.img = cv.flip(self.img, 1)
+            # self.img = cv.resize(self.img, (800, 600))
+            self.img = self.findPose(self.img, False)
+            self.cTime = time.time()
+            fps = 1 / (self.cTime - self.pTime)
+            self.pTime = self.cTime
+
+            cv.putText(self.img, str(int(fps)), (10, 70), cv.FONT_HERSHEY_PLAIN, 3,
+                       (255, 0, 255), 3)
+            self.img = self.findPose(self.img, True)
+            self.lmlist = self.findPosition(self.img, False)
+            # Uncomment for angle
+            # if ang:
+            #     self.angle()
+            if len(self.lmlist) != 0:
+                val = self.fallDetector(0.01)
+                if val:
+                    cv.putText(self.img, "fall", (70, 70), cv.FONT_HERSHEY_PLAIN, 3,
+                               (255, 0, 255), 3)
+                else:
+                    cv.putText(self.img, "stand", (70, 70), cv.FONT_HERSHEY_PLAIN, 3,
+                               (255, 0, 255), 3)
+            cv.imshow('img', self.img)
+            if cv.waitKey(1) & 0xFF == ord('q'):
+                break
 
     def findPose(self, img, draw=True):
         # imgRGB = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-        #w 5img = cv.resize(img, (1000, 500))
+        # w 5img = cv.resize(img, (1000, 500))
         self.results = self.pose.process(img)
         # print(results.multi_hand_landmarks)
         if self.results.pose_landmarks:
@@ -73,11 +107,15 @@ class poseDetector:
         _, x4, y4 = self.lmList[31][:]  # right toe
         _, x5, y5 = self.lmList[32][:]  # right toe
         x, y = (x2 + x3) / 2, (y2 + y3) / 2  # center of hip
-        #a, b = (x4 + x5) / 2, (y4 + y5) / 2  # center of legs
+        # a, b = (x4 + x5) / 2, (y4 + y5) / 2  # center of legs
         # distance between nose and mid-hip
-        d1 = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+        d1 = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
         # distance between two legs
         d2 = y1 - y2
-        if (d1*temp) < (d2):
+        if (d1 * temp) < (d2):
             return True
         return False
+
+
+x = poseDetector()
+x()
